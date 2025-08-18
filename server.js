@@ -1,28 +1,44 @@
-// backend/server.js
-const express = require('express');
-const dotenv = require('dotenv');
-const connectDB = require('./db');
-const cors = require('cors');
-
-dotenv.config();
-connectDB();
+require("dotenv").config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+"https://auth-frontend-orpin.vercel.app" 
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 
-// routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/items', require('./routes/itemRoutes'));
+const authRoutes = require("./routes/auth");
+const profileRoutes = require("./routes/Profile");
 
-// health
-app.get('/', (req, res) => res.send('API running'));
+app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
 
-// error handling fallback
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Server Error' });
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server started on port http://localhost:${PORT}`));
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("✅ MongoDB connected successfully");
+    app.listen(process.env.PORT || 5000, () => {
+      console.log(`🚀 Server running on port ${process.env.PORT || 5000}`);
+    });
+  })
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
